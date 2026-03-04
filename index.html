@@ -3,42 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出貨查詢系統-進階版</title>
+    <title>出貨快速查詢-全品項版</title>
     <style>
         :root { --primary: #1a73e8; --success: #34a853; --warning: #fbbc04; --danger: #ea4335; --dark: #202124; }
         body { font-family: -apple-system, sans-serif; background: #f8f9fa; padding: 15px; margin: 0; }
         .container { max-width: 500px; margin: auto; }
         .search-card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: sticky; top: 10px; z-index: 100; }
-        input { width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; transition: 0.3s; }
+        input { width: 100%; padding: 15px; border: 2px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
         input:focus { border-color: var(--primary); }
         
-        .result-card { background: white; margin-top: 15px; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        .group-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+        /* 卡片效果 */
+        .result-card { background: white; margin-top: 15px; padding: 20px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         .group-box { margin-bottom: 12px; padding: 12px; border-radius: 10px; border-left: 6px solid; }
-        .color-0 { background: #e8f0fe; border-color: var(--primary); color: #174ea6; }
-        .color-1 { background: #e6f4ea; border-color: var(--success); color: #137333; }
-        .color-2 { background: #fef7e0; border-color: var(--warning); color: #b06000; }
+        .color-0 { background: #e8f0fe; border-color: var(--primary); }
+        .color-1 { background: #e6f4ea; border-color: var(--success); }
+        .color-2 { background: #fef7e0; border-color: var(--warning); }
         
-        .row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 18px; border-bottom: 1px solid rgba(0,0,0,0.05); }
-        .note { margin-top: 15px; padding: 12px; background: #fff4f2; color: var(--danger); border-radius: 8px; font-weight: bold; border: 1px dashed var(--danger); }
+        .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 18px; border-bottom: 1px solid #f0f0f0; }
+        .note { margin-top: 10px; padding: 10px; background: #fff4f2; color: var(--danger); border-radius: 8px; font-weight: bold; border: 1px dashed var(--danger); }
         
-        /* 底部數據區排版 */
-        .footer-total { margin-top: 20px; padding: 15px; background: var(--dark); color: white; border-radius: 15px; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .stat-item { text-align: center; }
-        .stat-label { font-size: 12px; opacity: 0.7; margin-bottom: 3px; }
-        .stat-value { font-size: 18px; font-weight: bold; }
-        .main-total { text-align: center; }
+        .footer-total { margin-top: 15px; padding: 15px; background: var(--dark); color: white; border-radius: 12px; }
+        .stats { display: flex; justify-content: space-around; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 8px; font-size: 13px; }
+        .main-sum { text-align: center; font-size: 24px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="search-card">
-        <h3 style="margin: 0 0 15px 0; color: var(--primary);">🔍 品項快速查詢</h3>
-        <input type="text" id="searchInput" placeholder="輸入關鍵字 (如: 水餃)..." oninput="debounceFetch()">
+        <h3 style="margin: 0 0 10px 0; color: var(--primary);">🔍 全品項快速查詢</h3>
+        <input type="text" id="searchInput" placeholder="輸入關鍵字 (如: 網市 或 水餃)..." oninput="debounceSearch()">
     </div>
     <div id="resultArea"></div>
 </div>
@@ -48,7 +42,7 @@
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
 
     let timer;
-    function debounceFetch() {
+    function debounceSearch() {
         clearTimeout(timer);
         timer = setTimeout(fetchData, 400);
     }
@@ -60,36 +54,35 @@
 
         try {
             const resp = await fetch(SHEET_URL + '&t=' + Date.now());
-            const csvText = await resp.text();
-            const lines = csvText.split(/\r?\n/);
+            const csv = await resp.text();
+            const lines = csv.split(/\r?\n/);
             
+            // 重要：改用 filter() 抓取「所有」符合的行
             const matches = lines.filter(line => {
                 const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 return cols[0] && cols[0].replace(/"/g, '').includes(query);
             });
 
             if (matches.length > 0) {
-                area.innerHTML = matches.map(line => renderCard(line)).join('');
+                area.innerHTML = matches.map(m => renderCard(m)).join('');
             } else {
-                area.innerHTML = "<p style='text-align:center; color:#888; margin-top:20px;'>找不到相關品項</p>";
+                area.innerHTML = "<p style='text-align:center; color:#888; margin-top:20px;'>找不到品項</p>";
             }
         } catch (e) { console.error(e); }
     }
 
     function renderCard(line) {
         const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-        
-        // 對準新欄位索引：A(0)品項, B(1)店家, C(2)應到, D(3)叫貨總數, E(4)多的總數, F(5)分組規則, G(6)備註
         const name = cols[0].replace(/"/g, '');
         const details = cols[1] ? cols[1].replace(/"/g, '') : "";
-        const targetTotal = cols[2] ? cols[2].replace(/"/g, '') : "0";
-        const orderTotal = cols[3] ? cols[3].replace(/"/g, '') : "0";
-        const extraTotal = cols[4] ? cols[4].replace(/"/g, '') : "0";
+        const target = cols[2] ? cols[2].replace(/"/g, '') : "0";
+        const order = cols[3] ? cols[3].replace(/"/g, '') : "0";
+        const extra = cols[4] ? cols[4].replace(/"/g, '') : "0";
         const rules = cols[5] ? cols[5].replace(/"/g, '').split('/') : [];
         const note = cols[6] ? cols[6].replace(/"/g, '') : "";
 
         const shops = details.split(',').map(s => {
-            const m = s.trim().match(/^(.+?)\s+(\d+)$/);
+            const m = s.trim().match(/^(.+?)\s+(-?\d+)$/);
             return m ? { name: m[1], qty: parseInt(m[2]), used: false } : null;
         }).filter(x => x);
 
@@ -98,33 +91,32 @@
 
         rules.forEach((rule, i) => {
             const keys = rule.split('+').map(k => k.trim());
-            let shopRows = "", subtotal = 0;
+            let rows = "", sub = 0;
             shops.forEach(shop => {
                 if (!shop.used && keys.some(k => shop.name.includes(k))) {
-                    shopRows += `<div class="row"><span>${shop.name}</span><span>${shop.qty}</span></div>`;
-                    subtotal += shop.qty;
-                    shop.used = true;
+                    rows += `<div class="row"><span>${shop.name}</span><span>${shop.qty}</span></div>`;
+                    sub += shop.qty; shop.used = true;
                 }
             });
-            if(shopRows) {
+            if(rows) {
                 groupsHtml += `<div class="group-box color-${i % 3}">
-                    <span class="group-tag">📍 ${rule}</span>${shopRows}
-                    <div style="text-align:right; font-size:14px; margin-top:5px; font-weight:bold;">小計: ${subtotal}</div>
+                    <strong>📍 ${rule}</strong>${rows}
+                    <div style="text-align:right; font-size:14px; margin-top:5px; font-weight:bold;">小計: ${sub}</div>
                 </div>`;
-                currentSum += subtotal;
+                currentSum += sub;
             }
         });
 
-        let otherRows = "", otherSum = 0;
+        let others = "", otherSum = 0;
         shops.forEach(shop => {
             if(!shop.used) {
-                otherRows += `<div class="row"><span>${shop.name}</span><span>${shop.qty}</span></div>`;
+                others += `<div class="row"><span>${shop.name}</span><span>${shop.qty}</span></div>`;
                 otherSum += shop.qty;
             }
         });
-        if(otherRows) {
-            groupsHtml += `<div class="group-box" style="background:#f1f3f4; border-color:#bdc1c6;">
-                <span class="group-tag" style="background:#dadce0; color:#3c4043;">📍 其他</span>${otherRows}
+        if(others) {
+            groupsHtml += `<div class="group-box" style="background:#f1f3f4; border-color:#ccc;">
+                <strong>📍 其他</strong>${others}
                 <div style="text-align:right; font-size:14px; margin-top:5px; font-weight:bold;">小計: ${otherSum}</div>
             </div>`;
             currentSum += otherSum;
@@ -132,25 +124,15 @@
 
         return `
             <div class="result-card">
-                <h2 style="margin:0 0 15px 0; color:#202124; border-bottom:2px solid #f0f0f0; padding-bottom:10px;">${name}</h2>
+                <h2 style="margin:0 0 10px 0;">${name}</h2>
                 ${groupsHtml}
                 ${note ? `<div class="note">📝 備註：${note}</div>` : ''}
-                
                 <div class="footer-total">
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">叫貨總數</div>
-                            <div class="stat-value">${orderTotal}</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">多的總數</div>
-                            <div class="stat-value" style="color:var(--warning)">+${extraTotal}</div>
-                        </div>
+                    <div class="stats">
+                        <span>叫貨: ${order}</span>
+                        <span style="color:var(--warning)">多: ${extra}</span>
                     </div>
-                    <div class="main-total">
-                        <div style="font-size:13px; opacity:0.8; margin-bottom:5px;">當前店家累計 / 應到總數</div>
-                        <div style="font-size:28px; font-weight:bold;">${currentSum} / ${targetTotal}</div>
-                    </div>
+                    <div class="main-sum">${currentSum} / ${target}</div>
                 </div>
             </div>
         `;
