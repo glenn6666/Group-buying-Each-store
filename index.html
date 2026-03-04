@@ -3,175 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>出貨查詢-合併清單版</title>
+    <title>出貨清單-自動合併版</title>
     <style>
-        :root { --primary: #1a73e8; --success: #34a853; --warning: #fbbc04; --danger: #ea4335; --dark: #202124; }
-        body { font-family: -apple-system, sans-serif; background: #f8f9fa; padding: 10px; margin: 0; }
+        :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --dark: #202124; }
+        body { font-family: -apple-system, sans-serif; background: #f1f3f4; padding: 10px; margin: 0; color: #3c4043; }
         .container { max-width: 600px; margin: auto; }
-        .search-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: sticky; top: 5px; z-index: 100; }
-        input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 8px; font-size: 16px; box-sizing: border-box; outline: none; }
         
-        /* 合併後的表格樣式 */
-        .group-section { background: white; margin-top: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-top: 6px solid; }
-        .g-0 { border-color: var(--primary); }
-        .g-1 { border-color: var(--success); }
-        .g-2 { border-color: var(--warning); }
-        .g-none { border-color: #bdc1c6; }
+        /* 搜尋列 */
+        .search-wrapper { position: sticky; top: 0; background: #f1f3f4; padding: 10px 0; z-index: 100; }
+        input { width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 25px; font-size: 16px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); outline: none; }
 
-        .group-title { background: #f8f9fa; padding: 10px 15px; font-weight: bold; font-size: 16px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-        
+        /* 分組表格 */
+        .group-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .group-header { padding: 12px 15px; font-weight: bold; color: white; display: flex; justify-content: space-between; align-items: center; }
+        .bg-0 { background-color: var(--blue); }
+        .bg-1 { background-color: var(--green); }
+        .bg-2 { background-color: var(--orange); }
+        .bg-default { background-color: #70757a; }
+
         table { width: 100%; border-collapse: collapse; }
-        th { background: #fafafa; text-align: left; padding: 10px; font-size: 14px; color: #666; border-bottom: 1px solid #eee; }
-        td { padding: 12px 10px; border-bottom: 1px solid #f0f0f0; font-size: 16px; }
-        .qty-cell { text-align: right; font-weight: bold; width: 60px; }
-        .item-name { color: #333; font-weight: 500; }
-        
-        .footer-summary { background: var(--dark); color: white; padding: 15px; margin-top: 15px; border-radius: 12px; text-align: center; }
-        .note-tag { font-size: 12px; color: var(--danger); background: #fff1f0; padding: 2px 6px; border-radius: 4px; margin-left: 5px; border: 1px solid #ffccc7; }
+        td { padding: 12px 15px; border-bottom: 1px solid #f1f3f4; font-size: 16px; }
+        .item-cell { line-height: 1.4; }
+        .qty-cell { text-align: right; font-weight: bold; width: 80px; font-size: 18px; }
+        .note-text { font-size: 12px; color: #d93025; display: block; margin-top: 2px; }
+        .shop-list { font-size: 12px; color: #70757a; display: block; }
+
+        .total-row { background: #f8f9fa; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="search-card">
-        <input type="text" id="searchInput" placeholder="搜尋 (如: 網市)..." oninput="debounceSearch()">
+    <div class="search-wrapper">
+        <input type="text" id="searchInput" placeholder="輸入關鍵字 (如: 網市)..." oninput="debounceSearch()">
     </div>
-    <div id="resultArea"></div>
+    <div id="displayArea"></div>
 </div>
 
 <script>
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
 
-    let timer;
+    let timeout = null;
     function debounceSearch() {
-        clearTimeout(timer);
-        timer = setTimeout(fetchData, 400);
+        clearTimeout(timeout);
+        timeout = setTimeout(fetchAndRender, 300);
     }
 
-    async function fetchData() {
+    async function fetchAndRender() {
         const query = document.getElementById('searchInput').value.trim();
-        const area = document.getElementById('resultArea');
-        if(!query) { area.innerHTML = ""; return; }
+        const area = document.getElementById('displayArea');
+        if (!query) { area.innerHTML = ""; return; }
 
         try {
-            const resp = await fetch(SHEET_URL + '&t=' + Date.now());
-            const csv = await resp.text();
-            const lines = csv.split(/\r?\n/);
+            const response = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
+            const data = await response.text();
+            const rows = data.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+
+            // 1. 篩選包含關鍵字的品項
+            const filtered = rows.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
             
-            // 1. 過濾出所有符合的品項
-            const matches = lines.filter(line => {
-                const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return cols[0] && cols[0].replace(/"/g, '').includes(query);
-            }).map(line => {
-                const c = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return {
-                    name: c[0].replace(/"/g, ''),
-                    details: c[1] ? c[1].replace(/"/g, '') : "",
-                    rules: c[5] ? c[5].replace(/"/g, '').split('/') : [],
-                    note: c[6] ? c[6].replace(/"/g, '') : ""
-                };
-            });
-
-            if (matches.length > 0) {
-                renderMergedTable(matches);
-            } else {
-                area.innerHTML = "<p style='text-align:center; color:#888; margin-top:20px;'>無符合品項</p>";
+            if (filtered.length === 0) {
+                area.innerHTML = "<div style='text-align:center; margin-top:20px;'>找不到品項</div>";
+                return;
             }
-        } catch (e) { console.error(e); }
-    }
 
-    function renderMergedTable(matches) {
-        const area = document.getElementById('resultArea');
-        area.innerHTML = "";
+            // 2. 重新組合資料結構：分組名稱 -> [品項清單]
+            const groups = {};
 
-        // 收集所有出現過的分組規則
-        let allGroups = {}; 
+            filtered.forEach(row => {
+                const name = row[0].replace(/"/g, '');
+                const shopsRaw = row[1] ? row[1].replace(/"/g, '') : "";
+                const rulesRaw = row[5] ? row[5].replace(/"/g, '') : "";
+                const note = row[6] ? row[6].replace(/"/g, '') : "";
 
-        matches.forEach(item => {
-            const shops = item.details.split(',').map(s => {
-                const m = s.trim().match(/^(.+?)\s+(-?\d+)$/);
-                return m ? { name: m[1], qty: parseInt(m[2]), used: false } : null;
-            }).filter(x => x);
+                const shops = shopsRaw.split(',').map(s => {
+                    const m = s.trim().match(/^(.+?)\s+(-?\d+)$/);
+                    return m ? { name: m[1], qty: parseInt(m[2]), used: false } : null;
+                }).filter(x => x);
 
-            // 按照規則分類
-            item.rules.forEach((rule, idx) => {
-                const keys = rule.split('+').map(k => k.trim());
-                if (!allGroups[rule]) allGroups[rule] = { idx: idx, content: [] };
-                
-                let foundAny = false;
-                let subtotal = 0;
-                let shopDetail = "";
+                const rules = rulesRaw ? rulesRaw.split('/').map(r => r.trim()) : [];
 
-                shops.forEach(shop => {
-                    if (!shop.used && keys.some(k => shop.name.includes(k))) {
-                        shopDetail += `${shop.name}(${shop.qty}) `;
-                        subtotal += shop.qty;
-                        shop.used = true;
-                        foundAny = true;
+                // 按照規則分組
+                rules.forEach((ruleName, idx) => {
+                    const keys = ruleName.split('+').map(k => k.trim());
+                    let subtotal = 0;
+                    let shopItems = [];
+
+                    shops.forEach(shop => {
+                        if (!shop.used && keys.some(k => shop.name.includes(k))) {
+                            shopItems.push(`${shop.name}(${shop.qty})`);
+                            subtotal += shop.qty;
+                            shop.used = true;
+                        }
+                    });
+
+                    if (subtotal !== 0) {
+                        if (!groups[ruleName]) groups[ruleName] = { colorIdx: idx, items: [] };
+                        groups[ruleName].items.push({ name, qty: subtotal, shopDetail: shopItems.join(' '), note });
                     }
                 });
 
-                if (foundAny) {
-                    allGroups[rule].content.push({
-                        itemName: item.name,
-                        shopDetail: shopDetail,
-                        subtotal: subtotal,
-                        note: item.note
+                // 剩餘店家歸類到「其他」
+                const remaining = shops.filter(s => !s.used);
+                if (remaining.length > 0) {
+                    const rName = "其他/未分類";
+                    if (!groups[rName]) groups[rName] = { colorIdx: -1, items: [] };
+                    const rTotal = remaining.reduce((a, b) => a + b.qty, 0);
+                    groups[rName].items.push({ 
+                        name, 
+                        qty: rTotal, 
+                        shopDetail: remaining.map(s => `${s.name}(${s.qty})`).join(' '), 
+                        note 
                     });
                 }
             });
 
-            // 處理未分類
-            let otherShops = shops.filter(s => !s.used);
-            if (otherShops.length > 0) {
-                if (!allGroups["其他"]) allGroups["其他"] = { idx: 99, content: [] };
-                let shopDetail = otherShops.map(s => `${s.name}(${s.qty})`).join(' ');
-                let subtotal = otherShops.reduce((a, b) => a + b.qty, 0);
-                allGroups["其他"].content.push({
-                    itemName: item.name,
-                    shopDetail: shopDetail,
-                    subtotal: subtotal,
-                    note: item.note
-                });
-            }
-        });
+            // 3. 渲染 HTML
+            let html = "";
+            for (const gName in groups) {
+                const group = groups[gName];
+                const colorClass = group.colorIdx === -1 ? 'bg-default' : `bg-${group.colorIdx % 3}`;
+                const gSum = group.items.reduce((a, b) => a + b.qty, 0);
 
-        // 繪製 HTML
-        for (let groupName in allGroups) {
-            const group = allGroups[groupName];
-            const section = document.createElement('div');
-            section.className = `group-section g-${groupName === "其他" ? "none" : group.idx % 3}`;
-            
-            let groupSum = group.content.reduce((a, b) => a + b.subtotal, 0);
-            
-            let tableHtml = `
-                <div class="group-title">
-                    <span>📍 ${groupName}</span>
-                    <span style="color:var(--danger)">共 ${groupSum}</span>
-                </div>
-                <table>
-                    <thead><tr><th>品項</th><th style="text-align:right">數量</th></tr></thead>
-                    <tbody>
-            `;
-
-            group.content.forEach(row => {
-                tableHtml += `
-                    <tr>
-                        <td>
-                            <div class="item-name">${row.itemName}</div>
-                            <div style="font-size:12px; color:#999">${row.shopDetail} ${row.note ? `<span class="note-tag">${row.note}</span>` : ''}</div>
-                        </td>
-                        <td class="qty-cell">${row.subtotal}</td>
-                    </tr>
+                html += `
+                    <div class="group-card">
+                        <div class="group-header ${colorClass}">
+                            <span>📍 ${gName}</span>
+                            <span>共 ${gSum} 包</span>
+                        </div>
+                        <table>
                 `;
-            });
 
-            tableHtml += `</tbody></table>`;
-            section.innerHTML = tableHtml;
-            area.appendChild(section);
+                group.items.forEach(item => {
+                    html += `
+                        <tr>
+                            <td class="item-cell">
+                                <strong>${item.name}</strong>
+                                <span class="shop-list">${item.shopDetail}</span>
+                                ${item.note ? `<span class="note-text">⚠️ ${item.note}</span>` : ''}
+                            </td>
+                            <td class="qty-cell">${item.qty}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `</table></div>`;
+            }
+            area.innerHTML = html;
+
+        } catch (err) {
+            area.innerHTML = "<div style='text-align:center;'>資料讀取失敗</div>";
         }
     }
 </script>
+
+</body>
+</html>
 </body>
 </html>
