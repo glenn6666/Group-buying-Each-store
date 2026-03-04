@@ -50,8 +50,8 @@
 </div>
 
 <script>
-    const SHEET_ID = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0/pubhtml'; 
-    const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+    const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
+    const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
     async function fetchData() {
         const target = document.getElementById('searchName').value.trim();
@@ -143,4 +143,5 @@
 </script>
 
 </body>
+
 </html>
