@@ -50,7 +50,10 @@
 </div>
 
 <script>
+    // 1. 這是你的發佈 ID
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
+    
+    // 2. 注意：發佈到網路的 JSON 連結格式稍有不同
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/gviz/tq?tqx=out:json`;
 
     async function fetchData() {
@@ -60,19 +63,29 @@
         try {
             const resp = await fetch(SHEET_URL);
             const text = await resp.text();
-            const json = JSON.parse(text.substr(47).slice(0, -2));
-            // 搜尋 B 欄品項
+            
+            // 處理 Google JSON 的特殊開頭與結尾
+            const startIdx = text.indexOf('{');
+            const endIdx = text.lastIndexOf('}') + 1;
+            const jsonStr = text.substring(startIdx, endIdx);
+            const json = JSON.parse(jsonStr);
+            
+            // 搜尋 B 欄品項 (索引為 1)
             const row = json.table.rows.find(r => r.c[1] && r.c[1].v.includes(target));
 
             if (row) {
                 render(row);
             } else {
-                alert("找不到該品項");
+                alert("找不到該品項，請檢查名稱是否正確");
             }
         } catch (e) {
-            alert("讀取失敗，請確認網路與試算表權限");
+            console.error(e);
+            alert("讀取失敗，請確認試算表已『發佈到網路』且設為『公開』");
         }
     }
+    
+    // ... 後面的 render 函數保持不變 ...
+</script>
 
     function render(row) {
         const name = row.c[1].v;
@@ -145,3 +158,4 @@
 </body>
 
 </html>
+
