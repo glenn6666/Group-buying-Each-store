@@ -3,177 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 到貨點收與店家分類系統</title>
+    <title>📦 出貨小助手 - 互動分貨版</title>
     <style>
         :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --purple: #a142f4; --dark: #202124; --bg: #f0f4f8; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; min-height: 100vh; display: flex; flex-direction: column; }
-        .container { max-width: 600px; margin: auto; flex: 1; width: 100%; padding-bottom: 100px; }
+        .container { max-width: 600px; margin: auto; flex: 1; width: 100%; }
         
-        .header { text-align: center; padding: 20px 0; }
-        .header h1 { font-size: 22px; color: var(--blue); margin: 0; }
+        .header { text-align: center; padding: 20px 0 10px 0; }
+        .header h1 { font-size: 24px; color: var(--blue); margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
-        .search-card { position: sticky; top: 10px; background: white; padding: 15px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); z-index: 100; }
-        input { width: 100%; padding: 12px; border: 1px solid #eee; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
+        .search-card { position: sticky; top: 10px; background: white; padding: 18px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 100; border: 2px solid #e0e6ed; }
+        input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; }
 
-        /* 品項列表樣式 */
-        .item-row { display: flex; align-items: flex-start; padding: 15px; border-bottom: 1px solid #f1f3f4; background: white; cursor: pointer; transition: 0.2s; }
-        .item-row:active { background: #f8f9fa; }
-        .checkbox-area { padding-right: 15px; padding-top: 5px; }
-        .checkbox-area input { width: 22px; height: 22px; cursor: pointer; }
+        /* 品項卡片樣式 - 維持原貌 */
+        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; cursor: pointer; transition: 0.2s; }
+        .group-card:active { transform: scale(0.98); }
+        .selected-card { background: #e6fffa !important; border-color: #38b2ac !important; opacity: 0.6; } /* 已選取樣式 */
+
+        .c-0 { border-color: var(--blue); }
+        .c-1 { border-color: var(--green); }
+        .c-2 { border-color: var(--orange); }
+        .c-none { border-color: #bdc1c6; }
+
+        .group-header { padding: 15px 20px; font-weight: 800; background: #fafbfc; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; }
+        .total-badge { background: var(--red); color: white; padding: 5px 15px; border-radius: 25px; font-size: 16px; font-weight: 900; }
         
-        .info-area { flex: 1; }
-        .item-title { font-size: 18px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 8px; }
-        .shop-tag-container { display: flex; flex-wrap: wrap; gap: 6px; }
-        .shop-tag { background: #edf2f7; padding: 4px 8px; border-radius: 6px; font-size: 14px; color: #4a5568; border: 1px solid #e2e8f0; }
-        .shop-tag b { color: var(--red); font-size: 16px; margin-left: 3px; }
-
-        /* 店家分類區 (下方浮動或固定區) */
-        .dispatch-section { margin-top: 30px; background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); }
-        .dispatch-header { font-size: 18px; font-weight: 800; color: var(--purple); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 20px; border-bottom: 1px solid #f1f3f4; vertical-align: top; }
         
-        .shop-group-box { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px dashed #cbd5e0; }
-        .shop-group-title { font-size: 16px; font-weight: 800; color: #2d3748; margin-bottom: 8px; border-left: 4px solid var(--blue); padding-left: 10px; }
-        .dispatch-item { font-size: 15px; padding: 4px 0; color: #4a5568; display: flex; justify-content: space-between; align-items: center; }
-        .dispatch-item:hover { color: var(--red); cursor: pointer; text-decoration: line-through; }
+        .item-title { font-size: 20px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 12px; }
+        
+        .shop-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
+        .shop-item { background: #edf2f7; padding: 10px 14px; border-radius: 12px; font-size: 17px; color: #2d3748; border: 1px solid #e2e8f0; }
+        .shop-item b { font-size: 26px; color: var(--red); margin-left: 5px; }
 
-        .warning-footer { text-align: center; padding: 25px 15px; color: #888; font-size: 12px; margin-top: 20px; }
+        .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; }
+
+        /* 下方待取貨清單區 */
+        .dispatch-section { margin-top: 40px; background: white; border-radius: 20px; padding: 20px; border: 3px solid var(--purple); }
+        .dispatch-header { font-size: 18px; font-weight: 900; color: var(--purple); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .shop-box { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .shop-box-title { font-weight: 800; color: #2d3748; margin-bottom: 10px; border-bottom: 2px solid #cbd5e0; padding-bottom: 5px; font-size: 17px; }
+        .dispatch-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 16px; border-bottom: 1px dashed #eee; }
+        .dispatch-row b { color: var(--red); font-size: 20px; }
+
+        .warning-footer { text-align: center; padding: 25px 15px; color: #888; font-size: 13px; border-top: 1px solid #e2e8f0; margin-top: 40px; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <div class="header"><h1>🚚 到貨分貨助手</h1></div>
+    <div class="header"><h1>📦 出貨快速查詢</h1></div>
 
     <div class="search-card">
-        <input type="text" id="searchInput" placeholder="🔍 搜尋到貨品項 (如：洋芋片)..." oninput="debounceSearch()">
+        <input type="text" id="searchInput" placeholder="🔍 搜尋品項點選到貨..." oninput="debounceSearch()">
     </div>
 
-    <div id="searchResults" style="margin-top: 15px; border-radius: 15px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);"></div>
+    <div id="displayArea"></div>
 
-    <div id="dispatchSection" class="dispatch-section" style="display: none;">
-        <div class="dispatch-header">📋 各店家待分配清單 (點擊可取消)</div>
-        <div id="shopGroupsContainer"></div>
+    <div id="dispatchArea" class="dispatch-section" style="display:none;">
+        <div class="dispatch-header">📋 安星給各店待取清單</div>
+        <div id="shopContent"></div>
     </div>
 
     <div class="warning-footer">
-        系統偶有出錯可能，若有問題請詢問小編。
+        ⚠️ 溫馨提示：系統偶有出錯可能，若有問題請詢問小編。
     </div>
 </div>
 
 <script>
     const SHEET_ID = '2PACX-1vSKJ-bbty6XrC42lhDt4IZkx30Xd5suv7asS7ujAncXMnv_AnHBRNuXbxU_HeH3sNxduS22z8I_rqF0'; 
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
-    
-    // 欄位定義
-    const SHOP_MAP = { "中港": 3, "小賴2(原小米妮)": 4, "北冰": 5, "小賴": 6, "安星": 7, "辣媽": 8 };
-    
-    let allData = [];
-    let selectedItems = new Set(); // 存儲已勾選的品項名稱
+    const SHOP_MAP = { "中港": 3, "小賴2(原小米妮)": 4, "北冰": 5, "小賴": 6, "安星": 7, "新廠商": 8 };
+
+    let selectedItems = new Set(); // 儲存勾選的品項名稱
+    let lastFetchedData = [];
 
     let timer = null;
     function debounceSearch() { clearTimeout(timer); timer = setTimeout(fetchData, 300); }
 
     async function fetchData() {
         const query = document.getElementById('searchInput').value.trim();
-        const resultsArea = document.getElementById('searchResults');
-        if (!query) { resultsArea.innerHTML = ""; return; }
-
+        const area = document.getElementById('displayArea');
+        if (!query) { area.innerHTML = ""; return; }
         try {
             const resp = await fetch(`${SHEET_URL}&cache=${Date.now()}`);
             const csv = await resp.text();
-            allData = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-            
-            const filtered = allData.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
-            renderSearchResults(filtered);
+            lastFetchedData = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+            const filtered = lastFetchedData.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
+            renderGroups(filtered);
         } catch (e) { console.error(e); }
     }
 
-    function renderSearchResults(matches) {
-        const resultsArea = document.getElementById('searchResults');
-        resultsArea.innerHTML = "";
+    function renderGroups(matches) {
+        const area = document.getElementById('displayArea');
+        area.innerHTML = "";
+        const finalGroups = {};
 
-        matches.forEach((row, index) => {
+        matches.forEach(row => {
             const name = row[0].replace(/"/g, '');
-            const isChecked = selectedItems.has(name) ? "checked" : "";
+            const ruleStr = (row[12] || "").replace(/"/g, '').trim(); 
+            const note = (row[13] || "").replace(/"/g, '').trim();
+            const orderQty = parseInt(row[10]) || 0; 
+            const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
             
-            let shopDetails = [];
-            for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
-                let v = parseInt(row[sIdx]) || 0;
-                if (v !== 0) shopDetails.push(`<span class="shop-tag">${sName}<b>${v}</b></span>`);
-            }
-
-            const html = `
-                <div class="item-row" onclick="toggleSelection('${name}')">
-                    <div class="checkbox-area">
-                        <input type="checkbox" id="chk-${index}" ${isChecked} onclick="event.stopPropagation(); toggleSelection('${name}')">
-                    </div>
-                    <div class="info-area">
-                        <span class="item-title">${name}</span>
-                        <div class="shop-tag-container">${shopDetails.join('')}</div>
-                    </div>
-                </div>
-            `;
-            resultsArea.innerHTML += html;
+            rules.forEach((rName, idx) => {
+                let sub = 0, detailHtmlArr = [];
+                const isAll = rName === "全部";
+                for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                    if (isAll || rName.split('+').some(t => sName.includes(t.trim()))) {
+                        let v = parseInt(row[sIdx]) || 0;
+                        if (v !== 0) { 
+                            detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); 
+                            sub += v; 
+                        }
+                    }
+                }
+                if (sub !== 0) {
+                    if (!finalGroups[rName]) finalGroups[rName] = { idx, items: [] };
+                    finalGroups[rName].items.push({ name, sub, detail: detailHtmlArr.join(' '), note });
+                }
+            });
         });
+
+        for (const [gName, data] of Object.entries(finalGroups)) {
+            const colorClass = (gName === "其他" || gName === "全部") ? "c-none" : `c-${data.idx % 3}`;
+            let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName} 分組</span></div><table>`;
+            data.items.forEach(item => {
+                const isSel = selectedItems.has(item.name) ? "selected-card" : "";
+                html += `
+                    <tr class="${isSel}" onclick="toggleItem('${item.name}')">
+                        <td>
+                            <span class="item-title">🔹 ${item.name}</span>
+                            <div class="shop-list-container">${item.detail}</div>
+                        </td>
+                        <td class="qty-cell">${item.sub}</td>
+                    </tr>`;
+            });
+            area.innerHTML += html + "</table></div>";
+        }
     }
 
-    function toggleSelection(itemName) {
-        if (selectedItems.has(itemName)) {
-            selectedItems.delete(itemName);
+    function toggleItem(name) {
+        if (selectedItems.has(name)) {
+            selectedItems.delete(name);
         } else {
-            selectedItems.add(itemName);
+            selectedItems.add(name);
         }
-        updateDispatchList();
-        // 重新渲染搜尋結果以同步勾選狀態
+        updateSummary();
+        // 重新渲染當前搜尋結果以顯示選取狀態
         const query = document.getElementById('searchInput').value.trim();
         if (query) fetchData();
     }
 
-    function updateDispatchList() {
-        const container = document.getElementById('shopGroupsContainer');
-        const section = document.getElementById('dispatchSection');
-        
-        if (selectedItems.size === 0) {
-            section.style.display = "none";
-            return;
-        }
+    function updateSummary() {
+        const area = document.getElementById('dispatchArea');
+        const content = document.getElementById('shopContent');
+        if (selectedItems.size === 0) { area.style.display = "none"; return; }
 
-        section.style.display = "block";
-        container.innerHTML = "";
+        area.style.display = "block";
+        content.innerHTML = "";
 
-        // 建立各家店的清單物件
-        let shopGroups = {};
-        for (const sName of Object.keys(SHOP_MAP)) shopGroups[sName] = [];
+        let summary = {};
+        for (const sName of Object.keys(SHOP_MAP)) summary[sName] = [];
 
-        // 遍歷所有選取的品項，找出各店數量
-        allData.forEach(row => {
+        lastFetchedData.forEach(row => {
             const name = row[0].replace(/"/g, '');
             if (selectedItems.has(name)) {
                 for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                     let v = parseInt(row[sIdx]) || 0;
-                    if (v !== 0) {
-                        shopGroups[sName].push({ name, qty: v });
-                    }
+                    if (v !== 0) summary[sName].push({ name, v });
                 }
             }
         });
 
-        // 渲染畫面
-        for (const [sName, items] of Object.entries(shopGroups)) {
+        for (const [shop, items] of Object.entries(summary)) {
             if (items.length > 0) {
-                let itemsHtml = items.map(it => `
-                    <div class="dispatch-item" onclick="toggleSelection('${it.name}')">
-                        <span>${it.name}</span>
-                        <b>${it.qty}</b>
-                    </div>
-                `).join('');
-
-                container.innerHTML += `
-                    <div class="shop-group-box">
-                        <div class="shop-group-title">📍 安星給${sName}</div>
-                        ${itemsHtml}
-                    </div>
-                `;
+                let itemsHtml = items.map(i => `<div class="dispatch-row" onclick="event.stopPropagation(); toggleItem('${i.name}')"><span>${i.name}</span><b>${i.v}</b></div>`).join('');
+                content.innerHTML += `<div class="shop-box"><div class="shop-box-title">📍 安星給${shop}</div>${itemsHtml}</div>`;
             }
         }
     }
