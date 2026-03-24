@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 出貨小助手 - 勾選不隱藏版</title>
+    <title>📦 出貨快速查詢系統</title>
     <style>
         :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --purple: #a142f4; --dark: #202124; --bg: #f0f4f8; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; min-height: 100vh; display: flex; flex-direction: column; }
@@ -15,37 +15,30 @@
         .search-card { position: sticky; top: 10px; background: white; padding: 18px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 100; border: 2px solid #e0e6ed; }
         input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; }
 
-        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; }
-        
-        /* 只有在選取狀態下才變色，但不影響文字內容 */
-        .selected-row { background: #e6fffa !important; }
+        /* 待取貨清單區 (首頁看板) */
+        .dispatch-section { margin: 20px 0; background: white; border-radius: 20px; padding: 20px; border: 3px solid var(--purple); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .dispatch-header { font-size: 18px; font-weight: 900; color: var(--purple); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .shop-box { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .shop-box-title { font-weight: 800; color: #2d3748; margin-bottom: 10px; border-bottom: 2px solid #cbd5e0; padding-bottom: 5px; font-size: 18px; }
+        .dispatch-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 17px; border-bottom: 1px dashed #ccc; cursor: pointer; color: #4a5568; }
+        .dispatch-row b { color: var(--red); font-size: 24px; min-width: 40px; text-align: right; }
 
+        /* 搜尋結果 */
+        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; }
+        .selected-row { background: #e6fffa !important; }
         .c-0 { border-color: var(--blue); }
         .c-1 { border-color: var(--green); }
         .c-2 { border-color: var(--orange); }
         .c-none { border-color: #bdc1c6; }
-
         .group-header { padding: 15px 20px; font-weight: 800; background: #fafbfc; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #edf2f7; }
-        .total-badge { background: var(--red); color: white; padding: 5px 15px; border-radius: 25px; font-size: 16px; font-weight: 900; }
         
         table { width: 100%; border-collapse: collapse; }
         td { padding: 20px; border-bottom: 1px solid #f1f3f4; vertical-align: top; cursor: pointer; }
-        
         .item-title { font-size: 20px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 12px; }
         .shop-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
         .shop-item { background: #edf2f7; padding: 10px 14px; border-radius: 12px; font-size: 17px; color: #2d3748; border: 1px solid #e2e8f0; }
         .shop-item b { font-size: 26px; color: var(--red); margin-left: 5px; }
-
         .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; }
-
-        /* 下方待取清單 */
-        .dispatch-section { margin-top: 40px; background: white; border-radius: 20px; padding: 20px; border: 3px solid var(--purple); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        .dispatch-header { font-size: 18px; font-weight: 900; color: var(--purple); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
-        .shop-box { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
-        .shop-box-title { font-weight: 800; color: #2d3748; margin-bottom: 10px; border-bottom: 2px solid #cbd5e0; padding-bottom: 5px; font-size: 18px; }
-        
-        .dispatch-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 17px; border-bottom: 1px dashed #ccc; cursor: pointer; color: #4a5568; }
-        .dispatch-row b { color: var(--red); font-size: 24px; min-width: 40px; text-align: right; }
 
         .warning-footer { text-align: center; padding: 25px 15px; color: #888; font-size: 13px; border-top: 1px solid #e2e8f0; margin-top: 40px; }
     </style>
@@ -54,14 +47,15 @@
 <div class="container">
     <div class="header"><h1>📦 出貨快速查詢</h1></div>
     <div class="search-card">
-        <input type="text" id="searchInput" placeholder="🔍 搜尋並點選到貨..." oninput="debounceSearch()">
+        <input type="text" id="searchInput" placeholder="🔍 搜尋到貨品項點擊勾選..." oninput="debounceSearch()">
     </div>
-    <div id="displayArea"></div>
 
     <div id="dispatchArea" class="dispatch-section" style="display:none;">
-        <div class="dispatch-header">📋 安星給各店待取清單 (點選單項取消勾選)</div>
+        <div class="dispatch-header">📋 安星給各店待取清單 (點擊取消)</div>
         <div id="shopContent"></div>
     </div>
+
+    <div id="displayArea"></div>
 
     <div class="warning-footer">⚠️ 溫馨提示：系統偶有出錯可能，若有問題請詢問小編。</div>
 </div>
@@ -71,7 +65,7 @@
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
     const SHOP_MAP = { "中港": 3, "小賴2(原小米妮)": 4, "北冰": 5, "小賴": 6, "安星": 7, "新廠商": 8 };
 
-    let selectedKeys = new Set(); // 格式為 "品項名稱|分組名稱"
+    let selectedKeys = new Set(); 
     let lastFetchedData = [];
 
     let timer = null;
@@ -148,14 +142,11 @@
             selectedKeys.add(key);
         }
         updateSummary();
-        refreshUI();
-    }
-
-    function refreshUI() {
+        // 重新渲染當前搜尋結果以維持變色狀態
         const query = document.getElementById('searchInput').value.trim();
         if (query) {
-            const filtered = lastFetchedData.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
-            renderGroups(filtered);
+             const filtered = lastFetchedData.filter(r => r[0] && r[0].replace(/"/g, '').includes(query));
+             renderGroups(filtered);
         }
     }
 
@@ -176,8 +167,7 @@
             const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
 
             rules.forEach(gName => {
-                const key = `${name}|${gName}`;
-                if (selectedKeys.has(key)) {
+                if (selectedKeys.has(`${name}|${gName}`)) {
                     const isAll = gName === "全部";
                     for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                         if (isAll || gName.split('+').some(t => sName.includes(t.trim()))) {
@@ -193,7 +183,7 @@
             if (items.length > 0) {
                 let itemsHtml = items.map(i => `
                     <div class="dispatch-row" onclick="toggleItem('${i.name}', '${i.gName}')">
-                        <span>${i.name} <small style="color:#999">(${i.gName})</small></span>
+                        <span>${i.name}</span>
                         <b>${i.v}</b>
                     </div>
                 `).join('');
@@ -202,5 +192,7 @@
         }
     }
 </script>
+</body>
+</html>
 </body>
 </html>
