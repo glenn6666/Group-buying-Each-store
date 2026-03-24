@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 出貨小助手 - 互動分貨版</title>
+    <title>📦 出貨小助手 - 分組點選版</title>
     <style>
         :root { --blue: #1a73e8; --green: #34a853; --orange: #fbbc04; --red: #ea4335; --purple: #a142f4; --dark: #202124; --bg: #f0f4f8; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 10px; margin: 0; color: #3c4043; min-height: 100vh; display: flex; flex-direction: column; }
@@ -15,10 +15,10 @@
         .search-card { position: sticky; top: 10px; background: white; padding: 18px; border-radius: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); z-index: 100; border: 2px solid #e0e6ed; }
         input { width: 100%; padding: 14px 20px; border: none; background: #f8f9fa; border-radius: 15px; font-size: 17px; box-sizing: border-box; outline: none; }
 
-        /* 品項卡片樣式 - 維持原貌 */
-        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; cursor: pointer; transition: 0.2s; }
-        .group-card:active { transform: scale(0.98); }
-        .selected-card { background: #e6fffa !important; border-color: #38b2ac !important; opacity: 0.6; } /* 已選取樣式 */
+        .group-card { background: white; margin-top: 20px; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border-left: 12px solid; }
+        
+        /* 點選後的樣式：針對整列表格 */
+        .selected-row { background: #e6fffa !important; opacity: 0.5; text-decoration: line-through; }
 
         .c-0 { border-color: var(--blue); }
         .c-1 { border-color: var(--green); }
@@ -29,23 +29,21 @@
         .total-badge { background: var(--red); color: white; padding: 5px 15px; border-radius: 25px; font-size: 16px; font-weight: 900; }
         
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 20px; border-bottom: 1px solid #f1f3f4; vertical-align: top; }
+        td { padding: 20px; border-bottom: 1px solid #f1f3f4; vertical-align: top; cursor: pointer; }
         
         .item-title { font-size: 20px; font-weight: 800; color: #1a202c; display: block; margin-bottom: 12px; }
-        
         .shop-list-container { display: flex; flex-wrap: wrap; gap: 10px; }
         .shop-item { background: #edf2f7; padding: 10px 14px; border-radius: 12px; font-size: 17px; color: #2d3748; border: 1px solid #e2e8f0; }
         .shop-item b { font-size: 26px; color: var(--red); margin-left: 5px; }
 
         .qty-cell { text-align: right; font-weight: 900; font-size: 36px; color: var(--blue); width: 85px; padding-top: 25px !important; }
 
-        /* 下方待取貨清單區 */
-        .dispatch-section { margin-top: 40px; background: white; border-radius: 20px; padding: 20px; border: 3px solid var(--purple); }
+        .dispatch-section { margin-top: 40px; background: white; border-radius: 20px; padding: 20px; border: 3px solid var(--purple); box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .dispatch-header { font-size: 18px; font-weight: 900; color: var(--purple); margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
         .shop-box { background: #f8fafc; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
         .shop-box-title { font-weight: 800; color: #2d3748; margin-bottom: 10px; border-bottom: 2px solid #cbd5e0; padding-bottom: 5px; font-size: 17px; }
-        .dispatch-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 16px; border-bottom: 1px dashed #eee; }
-        .dispatch-row b { color: var(--red); font-size: 20px; }
+        .dispatch-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 17px; border-bottom: 1px dashed #ccc; cursor: pointer; }
+        .dispatch-row b { color: var(--red); font-size: 22px; }
 
         .warning-footer { text-align: center; padding: 25px 15px; color: #888; font-size: 13px; border-top: 1px solid #e2e8f0; margin-top: 40px; }
     </style>
@@ -53,21 +51,17 @@
 <body>
 <div class="container">
     <div class="header"><h1>📦 出貨快速查詢</h1></div>
-
     <div class="search-card">
-        <input type="text" id="searchInput" placeholder="🔍 搜尋品項點選到貨..." oninput="debounceSearch()">
+        <input type="text" id="searchInput" placeholder="🔍 搜尋並點擊分組到貨..." oninput="debounceSearch()">
     </div>
-
     <div id="displayArea"></div>
 
     <div id="dispatchArea" class="dispatch-section" style="display:none;">
-        <div class="dispatch-header">📋 安星給各店待取清單</div>
+        <div class="dispatch-header">📋 安星給各店待取清單 (點擊取消)</div>
         <div id="shopContent"></div>
     </div>
 
-    <div class="warning-footer">
-        ⚠️ 溫馨提示：系統偶有出錯可能，若有問題請詢問小編。
-    </div>
+    <div class="warning-footer">⚠️ 溫馨提示：系統偶有出錯可能，若有問題請詢問小編。</div>
 </div>
 
 <script>
@@ -75,7 +69,7 @@
     const SHEET_URL = `https://docs.google.com/spreadsheets/d/e/${SHEET_ID}/pub?output=csv&gid=0`;
     const SHOP_MAP = { "中港": 3, "小賴2(原小米妮)": 4, "北冰": 5, "小賴": 6, "安星": 7, "新廠商": 8 };
 
-    let selectedItems = new Set(); // 儲存勾選的品項名稱
+    let selectedKeys = new Set(); // 格式為 "品項名稱|分組名稱"
     let lastFetchedData = [];
 
     let timer = null;
@@ -103,24 +97,24 @@
             const name = row[0].replace(/"/g, '');
             const ruleStr = (row[12] || "").replace(/"/g, '').trim(); 
             const note = (row[13] || "").replace(/"/g, '').trim();
-            const orderQty = parseInt(row[10]) || 0; 
             const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
             
             rules.forEach((rName, idx) => {
-                let sub = 0, detailHtmlArr = [];
+                let sub = 0, detailHtmlArr = [], shopData = [];
                 const isAll = rName === "全部";
                 for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
                     if (isAll || rName.split('+').some(t => sName.includes(t.trim()))) {
                         let v = parseInt(row[sIdx]) || 0;
                         if (v !== 0) { 
                             detailHtmlArr.push(`<div class="shop-item">🏠 ${sName}<b>${v}</b></div>`); 
-                            sub += v; 
+                            sub += v;
+                            shopData.push({sName, v});
                         }
                     }
                 }
                 if (sub !== 0) {
                     if (!finalGroups[rName]) finalGroups[rName] = { idx, items: [] };
-                    finalGroups[rName].items.push({ name, sub, detail: detailHtmlArr.join(' '), note });
+                    finalGroups[rName].items.push({ name, sub, detail: detailHtmlArr.join(' '), note, shopData });
                 }
             });
         });
@@ -129,12 +123,14 @@
             const colorClass = (gName === "其他" || gName === "全部") ? "c-none" : `c-${data.idx % 3}`;
             let html = `<div class="group-card ${colorClass}"><div class="group-header"><span>📍 ${gName} 分組</span></div><table>`;
             data.items.forEach(item => {
-                const isSel = selectedItems.has(item.name) ? "selected-card" : "";
+                const uniqueKey = `${item.name}|${gName}`;
+                const isSel = selectedKeys.has(uniqueKey) ? "selected-row" : "";
                 html += `
-                    <tr class="${isSel}" onclick="toggleItem('${item.name}')">
+                    <tr class="${isSel}" onclick="toggleItem('${item.name}', '${gName}')">
                         <td>
                             <span class="item-title">🔹 ${item.name}</span>
                             <div class="shop-list-container">${item.detail}</div>
+                            ${item.note && item.note !== "備註" ? `<div style="color:red; font-size:14px; margin-top:5px;">📝 ${item.note}</div>` : ''}
                         </td>
                         <td class="qty-cell">${item.sub}</td>
                     </tr>`;
@@ -143,14 +139,14 @@
         }
     }
 
-    function toggleItem(name) {
-        if (selectedItems.has(name)) {
-            selectedItems.delete(name);
+    function toggleItem(name, group) {
+        const key = `${name}|${group}`;
+        if (selectedKeys.has(key)) {
+            selectedKeys.delete(key);
         } else {
-            selectedItems.add(name);
+            selectedKeys.add(key);
         }
         updateSummary();
-        // 重新渲染當前搜尋結果以顯示選取狀態
         const query = document.getElementById('searchInput').value.trim();
         if (query) fetchData();
     }
@@ -158,7 +154,7 @@
     function updateSummary() {
         const area = document.getElementById('dispatchArea');
         const content = document.getElementById('shopContent');
-        if (selectedItems.size === 0) { area.style.display = "none"; return; }
+        if (selectedKeys.size === 0) { area.style.display = "none"; return; }
 
         area.style.display = "block";
         content.innerHTML = "";
@@ -166,19 +162,33 @@
         let summary = {};
         for (const sName of Object.keys(SHOP_MAP)) summary[sName] = [];
 
+        // 重新遍歷數據來彙整選取的項目
         lastFetchedData.forEach(row => {
             const name = row[0].replace(/"/g, '');
-            if (selectedItems.has(name)) {
-                for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
-                    let v = parseInt(row[sIdx]) || 0;
-                    if (v !== 0) summary[sName].push({ name, v });
+            const ruleStr = (row[12] || "").replace(/"/g, '').trim();
+            const rules = ruleStr === "" ? ["全部"] : ruleStr.split('/').map(r => r.trim());
+
+            rules.forEach(gName => {
+                if (selectedKeys.has(`${name}|${gName}`)) {
+                    const isAll = gName === "全部";
+                    for (const [sName, sIdx] of Object.entries(SHOP_MAP)) {
+                        if (isAll || gName.split('+').some(t => sName.includes(t.trim()))) {
+                            let v = parseInt(row[sIdx]) || 0;
+                            if (v !== 0) summary[sName].push({ name, v, gName });
+                        }
+                    }
                 }
-            }
+            });
         });
 
         for (const [shop, items] of Object.entries(summary)) {
             if (items.length > 0) {
-                let itemsHtml = items.map(i => `<div class="dispatch-row" onclick="event.stopPropagation(); toggleItem('${i.name}')"><span>${i.name}</span><b>${i.v}</b></div>`).join('');
+                let itemsHtml = items.map(i => `
+                    <div class="dispatch-row" onclick="toggleItem('${i.name}', '${i.gName}')">
+                        <span>${i.name} <small>(${i.gName})</small></span>
+                        <b>${i.v}</b>
+                    </div>
+                `).join('');
                 content.innerHTML += `<div class="shop-box"><div class="shop-box-title">📍 安星給${shop}</div>${itemsHtml}</div>`;
             }
         }
